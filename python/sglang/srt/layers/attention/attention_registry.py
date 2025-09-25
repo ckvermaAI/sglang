@@ -105,12 +105,21 @@ def create_flashmla_backend(runner):
 def create_flashattention_v3_backend(runner):
     import torch
 
-    assert (
-        torch.cuda.get_device_capability()[0] == 8 and not runner.use_mla_backend
-    ) or torch.cuda.get_device_capability()[0] == 9, (
-        "FlashAttention v3 Backend requires SM>=80 and SM<=90. "
-        "Please use `--attention-backend flashinfer`."
-    )
+    from sglang.srt.utils import is_cuda_alike, is_xpu
+
+    if is_cuda_alike():
+        assert (
+            torch.cuda.get_device_capability()[0] == 8 and not runner.use_mla_backend
+        ) or torch.cuda.get_device_capability()[0] == 9, (
+            "FlashAttention v3 Backend requires SM>=80 and SM<=90. "
+            "Please use `--attention-backend flashinfer`."
+        )
+    elif is_xpu():
+        device_name = torch.xpu.get_device_properties(0).name
+        assert "B580" in device_name or "e211" in device_name, (
+            "FlashAttention v3 Backend on XPU requires B580 or e211. "
+            "Please use `--attention-backend triton`."
+        )
     from sglang.srt.layers.attention.flashattention_backend import FlashAttentionBackend
 
     return FlashAttentionBackend(runner)
